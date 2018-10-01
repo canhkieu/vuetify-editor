@@ -11,8 +11,8 @@
   "main": "./dist/vuetify-editor.common.js",
   "dependencies": {
     "vue": "^2.5.17",
-    "vue-color": "^2.6.0",
-    "vuetify": "^1.0.19"
+    "vuetify": "^1.0.19",
+    "vuetify-editor": "https://github.com/canhkieu/vuetify-editor.git#developer"
   },
   "devDependencies": {
     "@vue/cli-plugin-eslint": "^3.0.1",
