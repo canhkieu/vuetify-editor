@@ -5,7 +5,7 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "build-lid": "vue-cli-service build --target lib --name vuetify-editor ./src/components/VuetifyEditor/index.js",
+    "build-lib": "vue-cli-service build --target lib --name vuetify-editor ./src/components/VuetifyEditor/index.js",
     "lint": "vue-cli-service lint"
   },
   "main": "./dist/vuetify-editor.common.js",
