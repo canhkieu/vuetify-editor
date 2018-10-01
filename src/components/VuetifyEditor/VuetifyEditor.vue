@@ -1,7 +1,6 @@
 <template>
   <v-card class="vuetify-editor">
     <v-card class="vuetify-editor-toolbar" ref="EditorToolbar">
-      <!-- <v-overflow-btn style="max-width:150px" :items="['Arial', 'Tahoma']" label="Select font" hide-details></v-overflow-btn> -->
       <template v-for="(item, index) in toolbars">
         <div v-if="item.btn_toggle" :key="'bar-'+index">
           <v-btn-toggle v-model="state[item.state]" :multiple="item.multiple" class="transparent elevation-0">
@@ -15,44 +14,43 @@
             <v-icon :style="{color:item.state==='foreColor'?state.foreColor:'auto'}">{{subitem.icon}}</v-icon>
           </v-btn>
         </div>
-        <!-- <div v-else-if="item.select" :key="'bar-'+index">
-          <v-overflow-btn v-for="(subitem,subindex ) in item.items" :value="state[item.state]" :key="'item-'+subindex+'-bar-'+index" @change="changeSelect($event,subitem)" style="width:150px" :items="subitem.items" label="Select font" hide-details @click.native="object_click=subitem.value"></v-overflow-btn>
-
-        </div> -->
+        <div v-else-if="item.select" :key="'bar-'+index">
+          <v-overflow-btn v-for="(subitem,subindex ) in item.items" :value="state[item.state]" :key="'item-'+subindex+'-bar-'+index" class="mt-0" @change="changeSelect" style="width:180px;min-height:20px;" :items="subitem.items" label="Select font" hide-details @click.native="object_click=subitem.value"></v-overflow-btn>
+        </div>
       </template>
-      <v-btn class="mb-2 mt-0" @click="save()" color="primary">Save</v-btn>
+      <v-btn class="mb-2 mt-0" @click="submitUpdate()" color="primary">submit update</v-btn>
     </v-card>
-    <v-card-text class="vuetify-editor-content scroll-y" ref="EditorContent" @change="log" contenteditable v-html="value" @blur="selRange = saveSelection()" :style="[{height:$vuetify.breakpoint.height-150+'px'}]">
+    <v-card-text class="vuetify-editor-content scroll-y" ref="EditorContent" @click="commandQuery" @keydown="commandQuery" @paste="onPaste" contenteditable v-html="value" @blur="selRange = saveSelection()" :style="[{height:options.height}]">
     </v-card-text>
     <v-dialog v-model="link_dialog" max-width="500px" transition="dialog-transition">
       <v-card>
-        <v-card-title class="title">
-          Create Link
+        <v-card-title class="headline">
+          Add Link
         </v-card-title>
         <v-card-text>
-          <v-text-field v-model="input_link" label="Link" @keyup.enter="createLink()"></v-text-field>
-          <v-switch label="Blank" v-model="input_link_options._blank"></v-switch>
+          <v-text-field v-model="input_link" label="Link" @keyup.enter="addLink()"></v-text-field>
+          <v-switch label="Opens the linked document in a new window or tab" v-model="input_link_options._blank"></v-switch>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn flat @click="link_dialog=false,input_link=null">Cancel</v-btn>
-          <v-btn flat color="primary" @click="createLink()">Submit</v-btn>
+          <v-btn flat color="primary" @click="addLink()">Submit</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
     <v-dialog v-model="image_dialog" max-width="500px" transition="dialog-transition">
       <v-card v-if="image_dialog">
-        <v-card-title class="title">
-          Add Image
+        <v-card-title class="headline">
+          Add Picture
         </v-card-title>
         <v-card-text>
-          <v-text-field v-model="input_image" label="Link" @keyup.enter="createImage()"></v-text-field>
+          <v-text-field v-model="input_image" label="Link" @keyup.enter="addImage()"></v-text-field>
           <div>
             <v-btn color="primary" @click="$refs.image_input.click()">
               <v-icon left>backup</v-icon>
               Upload
             </v-btn>
-            <input v-show="false" ref="image_input" type="file" accept="image/gif, image/jpg, image/png, image/jpeg" @change="loadImage">
+            <input v-show="false" ref="image_input" type="file" :accept="input_image_options.accept" @change="uploadImageLocal">
             <v-layout row class="my-3">
               <v-flex xs12 class="mr-3">
                 <v-text-field type="number" label="Width" v-model="input_image_options.width"></v-text-field>
@@ -70,17 +68,17 @@
           <v-card-actions>
             <v-spacer></v-spacer>
             <v-btn flat @click="image_dialog=false,input_image=null">Cancel</v-btn>
-            <v-btn flat color="primary" @click="createImage()">Submit</v-btn>
+            <v-btn flat color="primary" @click="addImage()">Submit</v-btn>
           </v-card-actions>
       </v-card>
     </v-dialog>
-    <v-dialog v-model="video_dialog" max-width="600px" transition="dialog-transition">
+    <v-dialog v-model="video_dialog" scrollable max-width="600px" transition="dialog-transition">
       <v-card v-if="video_dialog">
-        <v-card-title class="title">
+        <v-card-title class="headline">
           Add Video
         </v-card-title>
         <v-card-text>
-          <v-text-field v-model="input_video" label="Link" @keyup.enter="createVideo()"></v-text-field>
+          <v-text-field v-model="input_video" label="Link" @keyup.enter="addVideo()"></v-text-field>
           <v-layout row class="my-3">
             <v-flex xs12 class="mr-3">
               <v-text-field type="number" label="Width" v-model="input_video_options.width"></v-text-field>
@@ -89,20 +87,20 @@
               <v-text-field type="number" label="Height" v-model="input_video_options.height"></v-text-field>
             </v-flex>
           </v-layout>
-          <v-switch label="Is Youtube video" v-model="input_video_options.is_youtube"></v-switch>
+          <v-switch label="Youtube video" v-model="input_video_options.is_youtube"></v-switch>
           <v-switch v-show="input_video_options.is_youtube" label="Show title Youtube video" v-model="input_video_options.has_title_youtube"></v-switch>
-        </v-card-text>
-        <v-subheader>Review:</v-subheader>
-        <v-card-text class="text-xs-center">
-          <iframe v-if="input_video_options.is_youtube" width="500" height="315" :src="'https://www.youtube.com/embed/'+input_video_options.id_youtube+'?rel=0'+(input_video_options.has_title_youtube?'':'&amp;showinfo=0')" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen style="max-width:100%;"></iframe>
-          <video v-else width="500" height="315" controls playsinline :src="input_video" type="video/mp4" style="max-width:100%;">
-            Your browser does not support the video tag.
-          </video>
+          <v-subheader class="pa-0">Review:</v-subheader>
+          <div v-if="input_video" class="text-xs-center">
+            <iframe v-if="input_video_options.is_youtube" width="500" height="315" :src="'https://www.youtube.com/embed/'+input_video_options.id_youtube+'?rel=0'+(input_video_options.has_title_youtube?'':'&amp;showinfo=0')" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen style="max-width:100%;"></iframe>
+            <video v-else width="500" height="315" controls playsinline :src="input_video" type="video/mp4" style="max-width:100%;">
+              Your browser does not support the video tag.
+            </video>
+          </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn flat @click="video_dialog=false,input_video=null">Cancel</v-btn>
-          <v-btn flat color="primary" @click="createVideo()">Submit</v-btn>
+          <v-btn flat color="primary" @click="addVideo()">Submit</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -112,13 +110,13 @@
           Material Color Picker
         </v-card-title>
         <v-card-text>
-          <p class="subheading">Color Name: <span class="grey--text text--darken-1">{{input_color}}</span></p>
+          <p class="subheading">Hex Color: <span class="grey--text text--darken-1">{{input_color}}</span></p>
           <v-color v-model="input_color" />
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn flat @click="color_dialog=false,input_color=null">Cancel</v-btn>
-          <v-btn flat color="primary" @click="createForeColor()">Submit</v-btn>
+          <v-btn flat color="primary" @click="addForeColor()">Submit</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -137,6 +135,15 @@ export default {
     value: {
       type: String,
       default: "<p>Your Content</p"
+    },
+    options: {
+      type: Object,
+      default: () => {
+        return {
+          paste_format: true,
+          height: ""
+        };
+      }
     }
   },
   data() {
@@ -154,7 +161,8 @@ export default {
       input_image_options: {
         // Option mặc định cho Image
         width: 200,
-        height: null
+        height: "500px",
+        accept: "image/gif, image/jpg, image/png, image/jpeg"
       },
       review_image: false, // Hiển thị ảnh xem trước
       video_dialog: false, // Trang Thái Dialog add Video
@@ -177,10 +185,36 @@ export default {
         link: "createLink",
         history: "",
         media: "",
-        foreColor: ""
+        foreColor: "",
+        heading: "Normal"
       },
       inputTimeout: null,
       toolbars: [
+        {
+          panel_name: "Typography",
+          state: "heading",
+          select: true,
+          items: [
+            {
+              icon: "",
+              value: "fontSize",
+              items: [
+                "Normal",
+                "display-4",
+                "display-3",
+                "display-2",
+                "display-1",
+                "headline",
+                "title",
+                "subheading",
+                "body-2",
+                "body-1",
+                "caption"
+              ],
+              label: "Select Font"
+            }
+          ]
+        },
         {
           panel_name: "Font Styles",
           btn_toggle: true,
@@ -198,6 +232,10 @@ export default {
             {
               icon: "format_underline",
               value: "underline"
+            },
+            {
+              icon: "strikethrough_s",
+              value: "strikeThrough"
             }
           ]
         },
@@ -284,6 +322,18 @@ export default {
             }
           ]
         }
+      ],
+      arr_class_typography: [
+        "display-4",
+        "display-3",
+        "display-2",
+        "display-1",
+        "headline",
+        "title",
+        "subheading",
+        "body-2",
+        "body-1",
+        "caption"
       ]
     };
   },
@@ -301,7 +351,8 @@ export default {
             .split("?v=")[1]
             .split("&")[0];
         } catch (error) {
-          console.log(error);
+          return error;
+          // console.log(error);
         }
       } else {
         this.input_video_options.is_youtube = false;
@@ -309,12 +360,6 @@ export default {
     }
   },
   methods: {
-    /**
-     * Lấy đối tượng this để sử dụng trên template
-     */
-    vm() {
-      return this;
-    },
     /**
      * Lưu lại vị trí đang select
      */
@@ -347,7 +392,7 @@ export default {
     /**
      * Tạo liên kết
      */
-    createLink() {
+    addLink() {
       this.restoreSelection(this.selRange);
       this.execCommand("createLink", false, this.input_link);
       // document.execCommand('createLink', true, url);
@@ -359,7 +404,7 @@ export default {
     /**
      * Tạo Hình Ảnh
      */
-    createImage() {
+    addImage() {
       this.restoreSelection(this.selRange);
       this.execCommand(
         "insertHTML",
@@ -381,7 +426,7 @@ export default {
     /**
      * Tạo Video
      */
-    createVideo() {
+    addVideo() {
       this.restoreSelection(this.selRange);
 
       let content_video = "";
@@ -421,7 +466,7 @@ export default {
     /**
      * Tạo fore Color
      */
-    createForeColor() {
+    addForeColor() {
       this.restoreSelection(this.selRange);
       this.execCommand("foreColor", false, this.input_color);
       this.color_dialog = false;
@@ -436,7 +481,6 @@ export default {
       switch (dialog) {
         case "image_dialog": {
           let range_select = this.selRange.cloneContents();
-          console.dir(range_select.firstChild);
           if (
             range_select &&
             range_select.firstChild &&
@@ -450,7 +494,6 @@ export default {
         }
         case "video_dialog": {
           let range_select = this.selRange.cloneContents();
-          console.dir(range_select.firstChild);
           if (
             range_select &&
             range_select.firstChild &&
@@ -499,7 +542,7 @@ export default {
     /**
      * Lấy Hình ảnh local
      */
-    loadImage(e) {
+    uploadImageLocal(e) {
       if (e.target.files && e.target.files[0]) {
         var reader = new FileReader();
         reader.onload = ev => {
@@ -515,16 +558,10 @@ export default {
       document.execCommand(commandName, showDefaultUI, value);
     },
     /**
-     * Accept data đang chỉnh sửa và đẩy vào value  (v-model)
+     * submitUpdate data đang chỉnh sửa và đẩy vào value  (v-model)
      */
-    save() {
+    submitUpdate() {
       this.$emit("input", this.$refs.EditorContent.innerHTML);
-    },
-    log() {
-      console.log("d");
-    },
-    test(e, c) {
-      console.log({ e, c });
     },
     toggleItemArray(states, value, addItem = false) {
       if (addItem) {
@@ -535,7 +572,7 @@ export default {
         // states = states.filter(item => item !== value);
         let index = states.indexOf(value);
         if (index !== -1) {
-          console.log("states", states);
+          // console.log("states", states);
           states.splice(index, 1);
         }
       }
@@ -555,76 +592,119 @@ export default {
         );
       }
       return "#000000";
-    }
-  },
-  mounted() {
-    let editor = this.$refs.EditorContent;
-    ["click", "keydown"].forEach(e => {
-      editor.addEventListener(
-        e,
-        () => {
-          clearTimeout(this.inputTimeout);
-          this.inputTimeout = setTimeout(() => {
-            clearTimeout(this.inputTimeout);
-            // Get attributes element select
-            // this.saveSelection();
-            //
+    },
+    onPaste(e) {
+      if (!this.options.paste_format) {
+        e.preventDefault();
+        document.execCommand(
+          "insertHTML",
+          false,
+          e.clipboardData.getData("text/plain")
+        );
+      }
+    },
+    commandQuery() {
+      clearTimeout(this.inputTimeout);
+      this.inputTimeout = setTimeout(() => {
+        this.saveSelection();
+        clearTimeout(this.inputTimeout);
+        this.toggleItemArray(
+          this.state.fontStyles,
+          "bold",
+          document.queryCommandState("bold")
+        );
+        this.toggleItemArray(
+          this.state.fontStyles,
+          "italic",
+          document.queryCommandState("italic")
+        );
+        this.toggleItemArray(
+          this.state.fontStyles,
+          "underline",
+          document.queryCommandState("underline")
+        );
 
-            this.toggleItemArray(
-              this.state.fontStyles,
-              "bold",
-              document.queryCommandState("bold")
-            );
-            this.toggleItemArray(
-              this.state.fontStyles,
-              "italic",
-              document.queryCommandState("italic")
-            );
-            this.toggleItemArray(
-              this.state.fontStyles,
-              "underline",
-              document.queryCommandState("underline")
-            );
-
-            this.$set(
-              this.state,
-              "justify",
-              document.queryCommandState("justifyLeft")
-                ? "justifyLeft"
-                : document.queryCommandState("justifyRight")
-                  ? "justifyRight"
-                  : document.queryCommandState("justifyCenter")
-                    ? "justifyCenter"
-                    : document.queryCommandState("justifyFull")
-                      ? "justifyFull"
-                      : ""
-            );
-            this.$set(
-              this.state,
-              "list",
-              document.queryCommandState("insertOrderedList")
-                ? "insertOrderedList"
-                : document.queryCommandState("insertUnorderedList")
-                  ? "insertUnorderedList"
+        this.$set(
+          this.state,
+          "justify",
+          document.queryCommandState("justifyLeft")
+            ? "justifyLeft"
+            : document.queryCommandState("justifyRight")
+              ? "justifyRight"
+              : document.queryCommandState("justifyCenter")
+                ? "justifyCenter"
+                : document.queryCommandState("justifyFull")
+                  ? "justifyFull"
                   : ""
-            );
-            this.$set(
-              this.state,
-              "foreColor",
-              this.rgb2hex(document.queryCommandValue("foreColor"))
-            );
-            this.input_color = this.state.foreColor;
-          }, 500);
-          return false;
-        },
-        false
-      );
-    });
+        );
+        this.$set(
+          this.state,
+          "list",
+          document.queryCommandState("insertOrderedList")
+            ? "insertOrderedList"
+            : document.queryCommandState("insertUnorderedList")
+              ? "insertUnorderedList"
+              : ""
+        );
+        this.$set(
+          this.state,
+          "foreColor",
+          this.rgb2hex(document.queryCommandValue("foreColor"))
+        );
+        this.input_color = this.state.foreColor;
+        this.getSelectionTypography();
+      }, 500);
+    },
+    changeSelect(val) {
+      if (this.object_click) {
+        this.restoreSelection(this.selRange);
+        if (this.sel_select) {
+          document.execCommand("formatblock", false, "p");
+          let el = this.sel_select.anchorNode.parentNode;
+          // Toggle Class
+          if (el.classList && el.classList.length > 0) {
+            let arr_class = [...el.classList].map(item => {
+              if (!this.arr_class_typography.includes(item)) return item;
+            });
+            if (val !== "Normal") arr_class.push(val);
+            el.setAttribute("class", arr_class.join(" "));
+          } else {
+            if (val === "Normal") el.setAttribute("class", "");
+            else el.setAttribute("class", val);
+          }
+          // console.log(val);
+          // console.log(this.selRange.cloneRange());
+          // if (this.selRange) {
+          //   let new_el = document.createElement("span");
+          //   if (val === "Normal") {
+          //     let text = this.selRange.cloneContents().textContent;
+          //     this.selRange.deleteContents();
+          //     new_el.innerText = text;
+          //     this.selRange.insertNode(new_el);
+          //   } else {
+          //     new_el.className = val;
+          //     new_el.appendChild(this.selRange.extractContents());
+          //     this.selRange.insertNode(new_el);
+          //   }
+          // }
+        }
+        this.object_click = null;
+      }
+    },
+    getSelectionTypography() {
+      if (this.sel_select) {
+        let el = this.sel_select.anchorNode.parentNode;
+        if (el.className && this.arr_class_typography.includes(el.className))
+          this.state.heading = el.className;
+        else this.state.heading = "Normal";
+      }
+    }
   }
 };
 </script>
 <style>
-.vuetify-editor {
+.vuetify-editor-content {
+  font-size: 16px;
 }
 .vuetify-editor .vuetify-editor-toolbar > div {
   display: inline-flex;
@@ -633,10 +713,4 @@ export default {
 .vuetify-editor .vuetify-editor-content {
   outline: none;
 }
-/* font[size="7"] {
-}
-font[size="6"] {
-}
-font[size="5"] {
-} */
 </style>
