@@ -2,7 +2,7 @@
   <v-app>
     <v-content>
       <v-container fluid>
-        <v-editor v-model="content" :options="editor_options" />
+        <v-editor v-model="content" flat :options="editor_options" />
       </v-container>
     </v-content>
     <v-footer app>
@@ -13,7 +13,6 @@
 
 <script>
 import VEditor from "./components/VuetifyEditor/VuetifyEditor";
-
 export default {
   name: "App",
   components: {
@@ -23,7 +22,8 @@ export default {
     return {
       editor_options: {
         paste_format: false,
-        height: this.$vuetify.breakpoint.height - 150 + "px"
+        height: this.$vuetify.breakpoint.height - 150,
+        save_button_top: false
       },
       content: null
     };
